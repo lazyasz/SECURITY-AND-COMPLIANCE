@@ -173,25 +173,46 @@ class IngestionPipeline:
             self.current_status = "ERROR: No Synthetic Data found"
             return
 
-        db = SessionLocal()
         try:
             while self._running:
-                # Select a random record to ingest
-                record = random.choice(raw_records)
+                db = SessionLocal()
+                try:
+                    # 1. Fetch fresh list of emails currently in the database to prevent duplicate ingestion.
+                    # If a patient is deleted via GDPR Art. 17, they can be re-ingested from the stream.
+                    from encryption import decrypt_field
+                    all_patients = db.query(PatientRecord).all()
+                    existing_emails = set()
+                    for p in all_patients:
+                        email_val = decrypt_field(p.email_encrypted)
+                        if email_val:
+                            existing_emails.add(email_val.strip().lower())
+
+                    # 2. Filter raw records to those not currently active in secure storage.
+                    available_records = [r for r in raw_records if r["email"].strip().lower() not in existing_emails]
+
+                    if not available_records:
+                        self.current_status = "IDLE: ALL RECORDS INGESTED"
+                        db.close()
+                        time.sleep(3.0)
+                        continue
+
+                    # 3. Ingest a random non-duplicate patient record from the stream
+                    self.current_status = "RUNNING"
+                    record = random.choice(available_records)
+                    self._ingest_single_record(db, record)
+                    self.total_processed += 1
+                except Exception as inner_e:
+                    print(f"Error in ingestion iteration: {inner_e}")
+                    db.rollback()
+                finally:
+                    db.close()
                 
-                # Check if this email is already ingested in this run to keep DB realistic
-                # If already ingested, we'll still ingest it but simulate it as a new transaction
-                self._ingest_single_record(db, record)
-                self.total_processed += 1
-                
-                # Wait between 3 to 6 seconds for streaming visualization effect
+                # Wait between 3 to 5 seconds for streaming visualization effect
                 time.sleep(random.uniform(3.0, 5.0))
         except Exception as e:
             print(f"Exception in ingestion loop: {e}")
             self.current_status = f"ERROR: {str(e)}"
             self._running = False
-        finally:
-            db.close()
 
 # Singleton pipeline instance
 pipeline_instance = IngestionPipeline()

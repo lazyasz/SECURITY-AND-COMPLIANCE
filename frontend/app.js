@@ -1,5 +1,18 @@
 // --- SecureData Compliance Framework App Logic ---
 
+function escapeHTML(str) {
+    if (!str) return '';
+    return str.replace(/[&<>'"]/g, 
+        tag => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            "'": '&#39;',
+            '"': '&quot;'
+        }[tag] || tag)
+    );
+}
+
 class AppState {
     constructor() {
         this.currentView = 'overview';
@@ -363,15 +376,15 @@ class AppState {
 
             return `
                 <tr>
-                    <td style="font-family: var(--font-mono); font-size:0.8rem; white-space:nowrap;">
+                    <td data-label="Timestamp" style="font-family: var(--font-mono); font-size:0.8rem; white-space:nowrap;">
                         ${dateStr} <span style="color:var(--text-muted);">${timeStr}</span>
                     </td>
-                    <td><span class="badge ${tagClass}">${l.action}</span></td>
-                    <td style="font-family: var(--font-mono); font-size:0.85rem;">${l.resource}</td>
-                    <td><strong>${l.username}</strong></td>
-                    <td><span class="badge ${l.role === 'Admin' ? 'badge-raw' : 'badge-masked'}">${l.role}</span></td>
-                    <td style="font-style: italic; font-size:0.85rem; color:var(--text-secondary);">${l.reason || '-'}</td>
-                    <td><span class="${statusClass}">${l.status}</span></td>
+                    <td data-label="Action"><span class="badge ${tagClass}">${escapeHTML(l.action)}</span></td>
+                    <td data-label="Resource / Target" style="font-family: var(--font-mono); font-size:0.85rem;">${escapeHTML(l.resource)}</td>
+                    <td data-label="Operator"><strong>${escapeHTML(l.username)}</strong></td>
+                    <td data-label="Clearance"><span class="badge ${l.role === 'Admin' ? 'badge-raw' : 'badge-masked'}">${l.role}</span></td>
+                    <td data-label="Justification" style="font-style: italic; font-size:0.85rem; color:var(--text-secondary);">${escapeHTML(l.reason) || '-'}</td>
+                    <td data-label="Outcome"><span class="${statusClass}">${l.status}</span></td>
                 </tr>
             `;
         }).join('');
@@ -512,7 +525,7 @@ class AppState {
                 </div>
             </div>
             
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+            <div class="overview-columns">
                 <div class="view-panel">
                     <h3 style="margin-bottom:1rem; font-size:1.15rem;">GDPR Compliance Controls Demo</h3>
                     <ul style="list-style-type: square; margin-left: 1.5rem; font-size:0.9rem; color:var(--text-secondary); display:flex; flex-direction:column; gap:0.5rem;">
@@ -585,48 +598,64 @@ class AppState {
 
     getExplorerHTML() {
         const rows = this.patients.map(p => {
-            const hasMarketing = p.consent_marketing ? 'Yes' : 'No';
-            const hasResearch = p.consent_research ? 'Yes' : 'No';
+            const hasMarketing = p.consent_marketing ? '✓' : '✗';
+            const hasResearch = p.consent_research ? '✓' : '✗';
+            const hasShare = p.consent_share ? '✓' : '✗';
             
             const scopeClass = p.country !== 'United States' ? 'badge-eu' : 'badge-us';
             const scopeLabel = p.country !== 'United States' ? 'GDPR' : 'HIPAA';
 
-            // Check dynamic masking status
-            const maskBadge = p.is_masked 
-                ? `<span class="badge badge-masked">MASKED (De-identified)</span>` 
-                : `<span class="badge badge-raw">RAW PII/PHI</span>`;
+            // 1. Subject Clearance Badge
+            const clearanceBadge = p.is_masked 
+                ? `<span class="badge badge-masked" style="font-size:0.65rem; border-width:1.5px; padding:1px 4px; margin-top:0.25rem;">MASKED</span>` 
+                : `<span class="badge badge-raw" style="font-size:0.65rem; border-width:1.5px; padding:1px 4px; margin-top:0.25rem;">RAW PII/PHI</span>`;
 
-            // If diagnostic field was blocked because of consent
-            const isDiagnosisRestricted = p.diagnosis && p.diagnosis.includes('[RESTRICTED');
-            const diagnosisCell = isDiagnosisRestricted 
-                ? `<span class="restricted-cell">${p.diagnosis}</span>`
-                : p.diagnosis;
-                
-            const treatmentCell = p.treatment && p.treatment.includes('[RESTRICTED') 
-                ? `<span class="restricted-cell">${p.treatment}</span>`
-                : p.treatment;
+            // 2. Clinical Case Column (Dynamic Masking & Consent Checks)
+            let clinicalCell = '';
+            if (p.diagnosis && p.diagnosis.includes('[RESTRICTED')) {
+                clinicalCell = `<span class="restricted-badge" title="Access Denied: Subject has revoked research consent under GDPR Art. 7.">🔒 Restricted</span>`;
+            } else {
+                clinicalCell = `
+                    <div style="font-weight: 700; color: var(--text-primary);">${p.diagnosis}</div>
+                    <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">${p.treatment}</div>
+                `;
+            }
 
-            const billingCell = p.billing_amount && p.billing_amount.toString().includes('[RESTRICTED') 
-                ? `<span class="restricted-cell">${p.billing_amount}</span>`
-                : (p.is_masked ? p.billing_amount : `$${parseFloat(p.billing_amount).toFixed(2)}`);
+            // 3. Financial Billing Column (Dynamic Masking & Consent Checks)
+            let billingCell = '';
+            if (p.billing_amount && p.billing_amount.toString().includes('[RESTRICTED')) {
+                billingCell = `<span class="restricted-badge" title="Access Denied: Subject has revoked third-party sharing consent under GDPR Art. 7.">🔒 Restricted</span>`;
+            } else {
+                const formattedBilling = p.is_masked ? p.billing_amount : `$${parseFloat(p.billing_amount).toFixed(2)}`;
+                billingCell = `<span style="font-weight: 700; font-family: var(--font-mono);">${formattedBilling}</span>`;
+            }
+
+            // 4. Consent Status Pill Tags
+            const consentPills = `
+                <span class="badge" style="background-color: ${p.consent_research ? '#E6F4EA' : '#FCE8E6'}; color: #1A1A1A; font-size:0.65rem; border-width: 1.5px; padding: 2px 4px; margin-right: 2px;" title="Medical Research Opt-In Status">RES: ${hasResearch}</span>
+                <span class="badge" style="background-color: ${p.consent_share ? '#E6F4EA' : '#FCE8E6'}; color: #1A1A1A; font-size:0.65rem; border-width: 1.5px; padding: 2px 4px;" title="Financial Sharing Opt-In Status">SHR: ${hasShare}</span>
+            `;
 
             return `
                 <tr>
-                    <td style="font-family: var(--font-mono); font-size:0.8rem;">#${p.id}</td>
-                    <td><strong>${p.first_name} ${p.last_name}</strong></td>
-                    <td>${p.email}</td>
-                    <td style="font-family: var(--font-mono);">${p.ssn}</td>
-                    <td>${p.birth_date}</td>
-                    <td><span class="badge ${scopeClass}">${scopeLabel} (${p.country})</span></td>
-                    <td>${diagnosisCell}</td>
-                    <td>${treatmentCell}</td>
-                    <td style="font-weight: 500;">${billingCell}</td>
-                    <td>
-                        <span class="badge ${p.consent_research ? 'badge-masked' : 'badge-raw'}" style="background-color: ${p.consent_research ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)'}; color: ${p.consent_research ? 'var(--success)' : 'var(--danger)'};">
-                            Research: ${hasResearch}
-                        </span>
+                    <td data-label="ID" style="font-family: var(--font-mono); font-size:0.8rem;">#${p.id}</td>
+                    <td data-label="Subject">
+                        <div style="font-weight: 800; font-size: 0.95rem;">${p.first_name} ${p.last_name}</div>
+                        ${clearanceBadge}
                     </td>
-                    <td>${maskBadge}</td>
+                    <td data-label="Contact Details">
+                        <div style="font-weight: 600;">${p.email}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary); font-family: var(--font-mono);">${p.phone}</div>
+                    </td>
+                    <td data-label="SSN" style="font-family: var(--font-mono); font-weight: 600;">${p.ssn}</td>
+                    <td data-label="DOB" style="font-family: var(--font-mono); font-weight: 600;">${p.birth_date}</td>
+                    <td data-label="Reg. Scope">
+                        <span class="badge ${scopeClass}">${scopeLabel}</span>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 700; margin-top: 0.25rem;">${p.country}</div>
+                    </td>
+                    <td data-label="Clinical Case">${clinicalCell}</td>
+                    <td data-label="Financial Case">${billingCell}</td>
+                    <td data-label="Consent Status" style="white-space: nowrap;">${consentPills}</td>
                 </tr>
             `;
         }).join('');
@@ -657,11 +686,11 @@ class AppState {
             `;
         } else {
             adminDecryptBar = `
-                <div class="decrypt-authorization-bar" style="background-color: rgba(255,255,255,0.02); border-color: var(--border-color);">
+                <div class="decrypt-authorization-bar" style="background-color: rgba(255,255,255,0.02); border-color: var(--border-color); box-shadow: none;">
                     <svg style="width: 20px; height: 20px; fill: var(--text-muted);" viewBox="0 0 24 24">
                         <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
                     </svg>
-                    <span style="font-size: 0.85rem; color: var(--text-secondary); flex-grow: 1;">
+                    <span style="font-size: 0.85rem; color: var(--text-secondary); flex-grow: 1; font-weight: 500;">
                         Role <strong>${this.role}</strong> has read-only access. Full column-level decryption is restricted to administrators (Admin role) with registered justifications.
                     </span>
                 </div>
@@ -672,32 +701,34 @@ class AppState {
             <div class="view-panel">
                 <div class="panel-header-actions">
                     <h3 style="font-size: 1.25rem; font-weight:600;">Patient Records Dataset</h3>
-                    <div style="font-size: 0.8rem; color: var(--text-secondary);">
+                    <div style="font-size: 0.8rem; color: var(--text-secondary); font-weight: bold; text-transform: uppercase;">
                         Active Clearance: <strong>${this.role}</strong>
                     </div>
                 </div>
                 
                 ${adminDecryptBar}
 
+                <div style="display: flex; justify-content: flex-end; font-size: 0.7rem; font-weight: 800; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                    ← Scroll Table Horizontally For More Columns →
+                </div>
+
                 <div class="table-container">
                     <table class="data-table">
                         <thead>
                             <tr>
                                 <th>ID</th>
-                                <th>Name</th>
-                                <th>Email</th>
+                                <th>Subject</th>
+                                <th>Contact Details</th>
                                 <th>SSN</th>
                                 <th>DOB</th>
                                 <th>Reg. Scope</th>
-                                <th>Diagnosis</th>
-                                <th>Treatment</th>
-                                <th>Billing</th>
+                                <th>Clinical Case</th>
+                                <th>Financial Case</th>
                                 <th>Consent Status</th>
-                                <th>Anonymization</th>
                             </tr>
                         </thead>
                         <tbody>
-                            ${rows.length > 0 ? rows : '<tr><td colspan="11" style="text-align:center; padding: 2rem; color:var(--text-muted);">No records found. Ingest data using the pipeline simulation.</td></tr>'}
+                            ${rows.length > 0 ? rows : '<tr><td colspan="9" style="text-align:center; padding: 2rem; color:var(--text-muted);">No records found. Ingest data using the pipeline simulation.</td></tr>'}
                         </tbody>
                     </table>
                 </div>
@@ -781,12 +812,12 @@ class AppState {
         const rows = this.patients.map(p => {
             return `
                 <tr>
-                    <td style="font-family: var(--font-mono); font-size:0.8rem;">#${p.id}</td>
-                    <td><strong>${p.first_name} ${p.last_name}</strong></td>
-                    <td>${p.email}</td>
-                    <td><span class="badge ${p.country !== 'United States' ? 'badge-eu' : 'badge-us'}">${p.country}</span></td>
-                    <td style="font-family: var(--font-mono); font-size:0.8rem;">${new Date(p.ingested_at).toLocaleDateString()}</td>
-                    <td>
+                    <td data-label="ID" style="font-family: var(--font-mono); font-size:0.8rem;">#${p.id}</td>
+                    <td data-label="Identified Subject"><strong>${p.first_name} ${p.last_name}</strong></td>
+                    <td data-label="Email ID">${p.email}</td>
+                    <td data-label="Reg. Jurisdiction"><span class="badge ${p.country !== 'United States' ? 'badge-eu' : 'badge-us'}">${p.country}</span></td>
+                    <td data-label="Ingestion Date" style="font-family: var(--font-mono); font-size:0.8rem;">${new Date(p.ingested_at).toLocaleDateString()}</td>
+                    <td data-label="Erasure Action">
                         <button class="btn btn-danger" style="padding:0.35rem 0.75rem; font-size:0.8rem;" onclick="appState.erasePatientRecord(${p.id})">
                             <svg style="width:14px;height:14px;fill:currentColor;" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
                             Erase Data
@@ -870,15 +901,15 @@ class AppState {
 
             return `
                 <tr>
-                    <td style="font-family: var(--font-mono); font-size:0.8rem; white-space:nowrap;">
+                    <td data-label="Timestamp" style="font-family: var(--font-mono); font-size:0.8rem; white-space:nowrap;">
                         ${dateStr} <span style="color:var(--text-muted);">${timeStr}</span>
                     </td>
-                    <td><span class="badge ${tagClass}">${l.action}</span></td>
-                    <td style="font-family: var(--font-mono); font-size:0.85rem;">${l.resource}</td>
-                    <td><strong>${l.username}</strong></td>
-                    <td><span class="badge ${l.role === 'Admin' ? 'badge-raw' : 'badge-masked'}">${l.role}</span></td>
-                    <td style="font-style: italic; font-size:0.85rem; color:var(--text-secondary);">${l.reason || '-'}</td>
-                    <td><span class="${statusClass}">${l.status}</span></td>
+                    <td data-label="Action"><span class="badge ${tagClass}">${escapeHTML(l.action)}</span></td>
+                    <td data-label="Resource / Target" style="font-family: var(--font-mono); font-size:0.85rem;">${escapeHTML(l.resource)}</td>
+                    <td data-label="Operator"><strong>${escapeHTML(l.username)}</strong></td>
+                    <td data-label="Clearance"><span class="badge ${l.role === 'Admin' ? 'badge-raw' : 'badge-masked'}">${l.role}</span></td>
+                    <td data-label="Justification" style="font-style: italic; font-size:0.85rem; color:var(--text-secondary);">${escapeHTML(l.reason) || '-'}</td>
+                    <td data-label="Outcome"><span class="${statusClass}">${l.status}</span></td>
                 </tr>
             `;
         }).join('');

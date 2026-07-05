@@ -1049,3 +1049,138 @@ body.role-Analyst .page-subtitle {
     background-color: var(--secondary) !important;
     color: var(--text-primary) !important;
 }
+
+/* Restricted Data badge */
+.restricted-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    background-color: #FFF0F0;
+    border: 2px solid var(--danger);
+    color: var(--danger);
+    padding: 0.3rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    box-shadow: 2px 2px 0px var(--text-primary);
+    cursor: pointer;
+    transition: var(--transition);
+    white-space: nowrap;
+}
+
+.restricted-badge:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0px var(--text-primary);
+    background-color: #FFE6E6;
+}
+
+/* Overview Panels Grid Layout */
+.overview-columns {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2.5rem;
+}
+
+/* Vertical flow visualizer for narrow viewports */
+@media (max-width: 900px) {
+    .flow-container {
+        flex-direction: column;
+        gap: 1.5rem;
+        align-items: center;
+    }
+    
+    .flow-node {
+        width: 180px;
+        height: 110px;
+    }
+    
+    .flow-connector {
+        width: 6px;
+        height: 40px;
+        margin: 0.5rem 0;
+        flex-grow: 0;
+    }
+    
+    .flow-connector-active::after {
+        width: 100%;
+        height: 20px;
+        background: linear-gradient(180deg, transparent, var(--secondary), transparent);
+        animation: flowStreamVert 1.5s linear infinite;
+        left: 0;
+    }
+}
+
+@keyframes flowStreamVert {
+    0% { top: -30px; }
+    100% { top: 100%; }
+}
+
+/* Responsive Table Card Stack Layout */
+@media (max-width: 768px) {
+    .data-table, 
+    .data-table thead, 
+    .data-table tbody, 
+    .data-table tr, 
+    .data-table th, 
+    .data-table td {
+        display: block;
+    }
+    
+    .data-table thead tr {
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
+    }
+    
+    .data-table tr {
+        border: var(--border-thickness) solid var(--text-primary);
+        border-radius: 12px;
+        margin-bottom: 1.5rem;
+        box-shadow: 4px 4px 0px var(--text-primary);
+        background-color: var(--bg-surface);
+        padding: 0.5rem;
+    }
+    
+    .data-table td {
+        border: none;
+        border-bottom: 2px dashed rgba(26, 26, 26, 0.15);
+        position: relative;
+        padding: 0.75rem 0.75rem 0.75rem 40% !important;
+        white-space: normal;
+        text-align: left;
+        min-height: 48px;
+    }
+    
+    .data-table td:last-child {
+        border-bottom: none;
+    }
+    
+    .data-table td::before {
+        content: attr(data-label);
+        position: absolute;
+        top: 50%;
+        left: 0.75rem;
+        width: 35%;
+        padding-right: 10px;
+        white-space: nowrap;
+        transform: translateY(-50%);
+        font-family: var(--font-header);
+        text-transform: uppercase;
+        font-size: 0.7rem;
+        color: var(--primary);
+    }
+    
+    /* Hide desktop helper text when cards are stacked */
+    div[style*="Scroll Table Horizontally"] {
+        display: none !important;
+    }
+    
+    .table-container {
+        border: none;
+        box-shadow: none;
+        background: transparent;
+        overflow-x: visible;
+    }
+}
