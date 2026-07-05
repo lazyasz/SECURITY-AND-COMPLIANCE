@@ -1,0 +1,15 @@
+# Database stores (Simulated storage)
+backend/*.db
+backend/secure_compliance.db
+
+# Cryptographic Keys (Field-level encryption key)
+backend/secret.key
+
+# Python cache & build logs
+__pycache__/
+backend/__pycache__/
+*.pyc
+
+# Local Environment Variables
+.env
+.env.local

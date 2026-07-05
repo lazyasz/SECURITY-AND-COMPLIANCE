@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SecureData Compliance Framework Dashboard</title>
+    <link rel="stylesheet" href="/assets/index.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="logo-container">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+                    </svg>
+                </div>
+                <h1 class="logo-text">SecureData Framework</h1>
+            </div>
+            
+            <nav class="nav-menu">
+                <a href="#" class="nav-item active" id="nav-overview" onclick="appState.navigateTo('overview')">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>
+                    </svg>
+                    <span>Overview</span>
+                </a>
+                <a href="#" class="nav-item" id="nav-explorer" onclick="appState.navigateTo('explorer')">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H7c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.04-.42 1.99-1.07 2.75z"/>
+                    </svg>
+                    <span>Data Explorer</span>
+                </a>
+                <a href="#" class="nav-item" id="nav-consent" onclick="appState.navigateTo('consent')">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                    <span>Consent Registry</span>
+                </a>
+                <a href="#" class="nav-item" id="nav-erasure" onclick="appState.navigateTo('erasure')">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                    </svg>
+                    <span>Right to Erasure</span>
+                </a>
+                <a href="#" class="nav-item" id="nav-audit" onclick="appState.navigateTo('audit')">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                    </svg>
+                    <span>Audit Trail</span>
+                </a>
+                <a href="#" class="nav-item" id="nav-mapping" onclick="appState.navigateTo('mapping')">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M4 14h6v-4H4v4zm0 5h6v-4H4v4zM4 9h6V5H4v4zm7 5h9v-4h-9v4zm0 5h9v-4h-9v4zM11 5v4h9V5h-9z"/>
+                    </svg>
+                    <span>Compliance Matrix</span>
+                </a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div class="framework-badge">
+                    <strong>GDPR & HIPAA</strong><br>
+                    Technical Security Controls
+                </div>
+            </div>
+        </aside>
+        
+        <!-- Main Content Panel -->
+        <main class="main-content">
+            <!-- Topbar (Role Configuration) -->
+            <header class="topbar">
+                <div class="header-titles">
+                    <h1 class="page-title">SECUREDATA COMPLIANCE FRAMEWORK</h1>
+                    <h2 class="page-subtitle" id="current-panel-title">Overview Dashboard</h2>
+                </div>
+                <div class="session-config">
+                    <div id="role-badge-container">
+                        <!-- Rendered by JS -->
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: flex-end;">
+                        <span style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Active Role Switcher</span>
+                        <select id="user-role-select" class="role-selector" onchange="appState.changeRole(this.value)">
+                            <option value="Analyst">Analyst (Default)</option>
+                            <option value="Admin">System Administrator</option>
+                            <option value="Auditor">Compliance Auditor</option>
+                        </select>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dynamic Viewport -->
+            <div id="app-viewport">
+                <!-- Views dynamically injected here -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast-notification" class="toast">
+        <svg style="width: 20px; height: 20px; fill: currentColor;" viewBox="0 0 24 24">
+            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+        </svg>
+        <span id="toast-message">Message text goes here</span>
+    </div>
+
+    <!-- App Logic Script -->
+    <script src="/assets/app.js"></script>
+</body>
+</html>
