@@ -105,6 +105,9 @@ class AppState {
     }
 
     async apiCall(endpoint, method = 'GET', body = null, headers = {}) {
+        const loadingEl = document.getElementById('loading-indicator');
+        if (loadingEl) loadingEl.style.display = 'block';
+
         const url = `/api/${endpoint}`;
         const defaultHeaders = {
             'Authorization': `Bearer ${this.token}`,
@@ -138,6 +141,8 @@ class AppState {
             console.error(`API Call failed (${endpoint}):`, error);
             this.showToast(error.message, 'danger');
             throw error;
+        } finally {
+            if (loadingEl) loadingEl.style.display = 'none';
         }
     }
 
