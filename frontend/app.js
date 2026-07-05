@@ -323,6 +323,55 @@ class AppState {
         this.showToast(this.decryptEnabled ? "Decrypted view activated (Audited)" : "Decrypted view deactivated", "info");
     }
 
+    // --- AUDIT LOG SEARCH ---
+    filterAuditLogs(query) {
+        const tbody = document.getElementById('audit-logs-tbody');
+        if (!tbody) return;
+
+        const q = query.toLowerCase().trim();
+        const filtered = this.auditLogs.filter(l => {
+            return l.username.toLowerCase().includes(q) ||
+                   l.action.toLowerCase().includes(q) ||
+                   l.resource.toLowerCase().includes(q) ||
+                   (l.reason && l.reason.toLowerCase().includes(q)) ||
+                   l.status.toLowerCase().includes(q);
+        });
+
+        if (filtered.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 2rem; color:var(--text-muted);">No matching audit logs found.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = filtered.map(l => {
+            const timeStr = new Date(l.timestamp).toLocaleTimeString();
+            const dateStr = new Date(l.timestamp).toLocaleDateString();
+            const statusClass = `log-status-${l.status}`;
+
+            // Classify actions for colored tags
+            let tagClass = 'tag-read';
+            const action = l.action;
+            if (action.includes('INGEST') || action.includes('UPDATE_CONSENT')) {
+                tagClass = 'tag-write';
+            } else if (action.includes('ERASE') || action.includes('WIPE') || action.includes('DELETE') || action.includes('UNAUTHORIZED_DELETE') || action.includes('DATABASE')) {
+                tagClass = 'tag-admin';
+            }
+
+            return `
+                <tr>
+                    <td style="font-family: var(--font-mono); font-size:0.8rem; white-space:nowrap;">
+                        ${dateStr} <span style="color:var(--text-muted);">${timeStr}</span>
+                    </td>
+                    <td><span class="badge ${tagClass}">${l.action}</span></td>
+                    <td style="font-family: var(--font-mono); font-size:0.85rem;">${l.resource}</td>
+                    <td><strong>${l.username}</strong></td>
+                    <td><span class="badge ${l.role === 'Admin' ? 'badge-raw' : 'badge-masked'}">${l.role}</span></td>
+                    <td style="font-style: italic; font-size:0.85rem; color:var(--text-secondary);">${l.reason || '-'}</td>
+                    <td><span class="${statusClass}">${l.status}</span></td>
+                </tr>
+            `;
+        }).join('');
+    }
+
     // --- HTML GENERATORS ---
 
     getOverviewHTML() {
@@ -835,6 +884,12 @@ class AppState {
                     Provides traceability for system queries under HIPAA §164.312(b) and GDPR Article 32. Transactions involving data ingestion, updates, right-to-erasure deletion requests, and administrative key decryption are logged.
                 </p>
 
+                <div class="logs-filter-row" style="margin-bottom: 1.5rem; display: flex; gap: 1rem;">
+                    <input type="text" id="audit-search-input" class="search-input" 
+                        oninput="appState.filterAuditLogs(this.value)" 
+                        placeholder="Search logs by operator, action, resource, justification...">
+                </div>
+
                 <div class="table-container">
                     <table class="data-table">
                         <thead>
@@ -848,7 +903,7 @@ class AppState {
                                 <th>Outcome</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="audit-logs-tbody">
                             ${rows.length > 0 ? rows : '<tr><td colspan="7" style="text-align:center; padding: 2rem; color:var(--text-muted);">Audit log is currently empty. Run transactions to populate.</td></tr>'}
                         </tbody>
                     </table>
